@@ -1,35 +1,121 @@
-import { Tabs } from 'expo-router';
-import React from 'react';
+import { Tabs, router } from 'expo-router';
+import Feather from '@expo/vector-icons/Feather';
+import { Image } from 'expo-image';
+import { View, Dimensions, useWindowDimensions, TouchableOpacity } from 'react-native';
 
-import { HapticTab } from '@/components/haptic-tab';
-import { IconSymbol } from '@/components/ui/icon-symbol';
-import { Colors } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
+const header_decor = require('@/assets/images/header-decor.png');
 
 export default function TabLayout() {
-  const colorScheme = useColorScheme();
-
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: Colors[colorScheme ?? 'light'].tint,
-        headerShown: false,
-        tabBarButton: HapticTab,
-      }}>
-      <Tabs.Screen
-        name="index"
-        options={{
+        tabBarActiveTintColor: '#283618',
+        headerStyle: {
+          backgroundColor: '#FCFCFC',
+        },
+        headerShadowVisible: false,
+        headerTintColor: '#0A0A0A',
+        headerLeftContainerStyle: {
+          paddingLeft: 10,
+        },
+        headerLeft: () => (
+          <View style={{flexDirection: 'row', alignItems: 'center', gap: 16}}>
+            <Image
+              source={header_decor}
+              style={{
+                height: Dimensions.get('window').height * 0.06,
+                width: Dimensions.get('window').width * 0.09,
+                resizeMode: 'contain',
+              }}
+            />
+            <TouchableOpacity
+              onPress={() => router.back()}
+              style={{ padding: 8, justifyContent: 'center', alignItems: 'center' }}
+              activeOpacity={0.7}
+            >
+              <Feather name="arrow-left" size={24} color="#0A0A0A" />
+            </TouchableOpacity>
+          </View>
+        ),
+        tabBarStyle: {
+          backgroundColor: '#FCFCFC',
+        },
+      }}
+    >
+      <Tabs.Screen 
+        name="index" 
+        options={{ 
           title: 'Home',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="house.fill" color={color} />,
-        }}
-      />
-      <Tabs.Screen
-        name="explore"
-        options={{
-          title: 'Explore',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="paperplane.fill" color={color} />,
-        }}
-      />
+          headerTitle: '',
+          headerLeftContainerStyle: {
+            paddingLeft: 10,
+          },
+          headerLeft: () => (
+            <View style={{flexDirection: 'row', alignItems: 'center', gap: 16}}>
+              <Image
+                source={header_decor}
+                style={{
+                  height: Dimensions.get('window').height * 0.06,
+                  width: Dimensions.get('window').width * 0.09,
+                  resizeMode: 'contain',
+                }}
+              />
+            </View>
+          ),
+          tabBarLabelStyle: {
+            fontSize: 14,
+          },
+          tabBarIcon: ({ color, focused }) => (
+            <Feather name="home" size={24} color="#0A0A0A" />
+          ), }} />
+      <Tabs.Screen 
+        name="pengaturan" 
+        options={{ 
+          title: 'Pengaturan',
+          tabBarLabelStyle: {
+            fontSize: 14,
+          },
+          tabBarIcon: ({ color, focused }) => (
+            <Feather name="settings" size={24} color="0A0A0A" />
+          ),
+        }} />
+      <Tabs.Screen 
+        name="databaseKK" 
+        options={{ 
+          title: 'Database Keluarga',
+          href: null,
+          // Uses the default headerLeft from screenOptions (with back button)
+        }} />
+      <Tabs.Screen 
+        name="detailKK" 
+        options={{ 
+          title: 'Detail Kartu Keluarga',
+          href: null,
+        }} />
+      <Tabs.Screen 
+        name="tambahKK" 
+        options={{ 
+          title: 'Tambah/Ubah Kartu Keluarga',
+          href: null,
+        }} />
+      <Tabs.Screen 
+        name="tambahAnggota" 
+        options={{ 
+          title: 'Tambah/Ubah Anggota Keluarga',
+          href: null,
+        }} />
+      <Tabs.Screen 
+        name="databaseSppt" 
+        options={{ 
+          title: 'Database SPPT PBB P2',
+          href: null,
+        }} />
+      <Tabs.Screen 
+        name="tambahSppt" 
+        options={{ 
+          title: 'Tambah/Ubah SPPT PBB P2',
+          href: null,
+        }} />
     </Tabs>
   );
 }

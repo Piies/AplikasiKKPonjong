@@ -1,98 +1,138 @@
-import { Image } from 'expo-image';
-import { Platform, StyleSheet } from 'react-native';
-
-import { HelloWave } from '@/components/hello-wave';
-import ParallaxScrollView from '@/components/parallax-scroll-view';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
+import { Text, TextInput, View, StyleSheet, Dimensions } from "react-native";
 import { Link } from 'expo-router';
+import { Image, ImageBackground } from 'expo-image';
+import { useState } from 'react';
 
-export default function HomeScreen() {
+import IconButton from "@/components/IconButton";
+import Feather from "@expo/vector-icons/Feather";
+
+const gradient_main = require('@/assets/images/gradient-home.png');
+const welcome_decor = require('@/assets/images/welcome-msg-decor.png');
+const placeholderName = 'Ratna'
+
+export default function Index() {
+  const [searchQuery, setSearchQuery] = useState('');
+
   return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
-      headerImage={
-        <Image
-          source={require('@/assets/images/partial-react-logo.png')}
-          style={styles.reactLogo}
+    <View style={styles.container}>
+      {/*background*/}
+      <View style={styles.backgroundContainer}>
+        <ImageBackground
+          source={gradient_main} 
+          style={styles.backgroundImage} 
+          contentFit="cover" // Covers the container area
         />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Welcome!</ThemedText>
-        <HelloWave />
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 1: Try it</ThemedText>
-        <ThemedText>
-          Edit <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> to see changes.
-          Press{' '}
-          <ThemedText type="defaultSemiBold">
-            {Platform.select({
-              ios: 'cmd + d',
-              android: 'cmd + m',
-              web: 'F12',
-            })}
-          </ThemedText>{' '}
-          to open developer tools.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <Link href="/modal">
-          <Link.Trigger>
-            <ThemedText type="subtitle">Step 2: Explore</ThemedText>
-          </Link.Trigger>
-          <Link.Preview />
-          <Link.Menu>
-            <Link.MenuAction title="Action" icon="cube" onPress={() => alert('Action pressed')} />
-            <Link.MenuAction
-              title="Share"
-              icon="square.and.arrow.up"
-              onPress={() => alert('Share pressed')}
-            />
-            <Link.Menu title="More" icon="ellipsis">
-              <Link.MenuAction
-                title="Delete"
-                icon="trash"
-                destructive
-                onPress={() => alert('Delete pressed')}
-              />
-            </Link.Menu>
-          </Link.Menu>
-        </Link>
+      </View>
 
-        <ThemedText>
-          {`Tap the Explore tab to learn more about what's included in this starter app.`}
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 3: Get a fresh start</ThemedText>
-        <ThemedText>
-          {`When you're ready, run `}
-          <ThemedText type="defaultSemiBold">npm run reset-project</ThemedText> to get a fresh{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> directory. This will move the current{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> to{' '}
-          <ThemedText type="defaultSemiBold">app-example</ThemedText>.
-        </ThemedText>
-      </ThemedView>
-    </ParallaxScrollView>
+      {/* Content */}
+      <View style={styles.welcomeMessage}>
+        <Feather name="user" size={40} color={'gray'} />
+        <View style={{
+          justifyContent: 'flex-end'
+        }}>
+          <Text style={{
+            fontWeight: 'bold', 
+            fontSize:16,}}>
+            Selamat Pagi, {placeholderName}
+          </Text>
+          <Text style={{
+            color: '#8F8F8F',
+            fontStyle: 'italic',
+            fontSize: 12,
+          }}>
+            Padukuhan triple ponjong
+          </Text>
+        </View>
+        <Image source={welcome_decor} style={{height:50, aspectRatio: 2}}/>
+      </View>
+      <View style={styles.searchInput}>
+        <TextInput
+          style={{
+            flex: 1,
+            fontSize: 12,
+          }}
+          placeholder="Pencarian (Nomor KK, Nama Kepala Keluarga)"
+          value={searchQuery}
+          onChangeText={setSearchQuery}
+          placeholderTextColor="#9CA3AF"
+        />
+        <Feather name="search" size={16} color={'#111827'}/>
+      </View>
+      <View style={styles.menuGrid}>
+        <IconButton label="Database Keluarga" iconName="users" href={"/databaseKK"}/>
+        <IconButton label="Tambah Kartu Keluarga Baru" iconName="file-plus" href={"/tambahKK"}/>
+        <IconButton label="Export Data" iconName="share" href={"/pengaturan"}/>
+        <IconButton label="Backup Data" iconName="database" href={"/pengaturan"}/>
+      </View>
+      <View style={{alignItems:"center", justifyContent: "center", width:'100%'}}>
+        <IconButton label="PBB-P2" iconName="file" href={"/databaseSppt"}/>
+      </View>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  titleContainer: {
+  container: {
+    flex: 1,
+    backgroundColor: '#FCFCFC',
+    alignItems: 'center',
+    justifyContent: 'flex-start',
+    gap: 24,
+    paddingTop: '10%',
+    width: Dimensions.get('window').width,
+    height: Dimensions.get('window').height,
+  },
+  welcomeMessage: {
+    width: '100%',
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
+    gap: 16,
+  },
+  searchInput: {
+    width: '80%',
+    height: 40,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#D1D5DB',
+    backgroundColor: '#F1F1F1',
+    color: '#111827',
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    paddingHorizontal: 16,
   },
-  stepContainer: {
-    gap: 8,
-    marginBottom: 8,
+  menuGrid: {
+    width: '80%',
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    rowGap: 16,
   },
-  reactLogo: {
-    height: 178,
-    width: 290,
-    bottom: 0,
+  text: {
+    color: '#0a0a0a',
+  },
+  button: {
+    fontSize: 20,
+    textDecorationLine: 'underline',
+    color: '#fff',
+  },
+  backgroundContainer: {
+    position: 'absolute', // Pulls it out of the normal layout flow
+    bottom: 0,            // Sticks it to the bottom
     left: 0,
-    position: 'absolute',
+    right: 0, 
+    width: Dimensions.get('window').width,
+    height: Dimensions.get('window').height * 0.4, // Calculate height based on aspect ratio
+    zIndex: -1,           // Ensures it stays behind your text/buttons
+    backgroundColor: '#FCFCFC',
+  },
+  backgroundImage: {
+    width: Dimensions.get('window').width,
+    height: Dimensions.get('window').height * 0.4,
+  },
+  footerContainer: {
+    flex: 1 / 3,
+    alignItems: 'center',
   },
 });
