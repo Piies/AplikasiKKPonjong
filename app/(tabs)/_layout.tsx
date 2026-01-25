@@ -116,6 +116,12 @@ export default function TabLayout() {
           title: 'Tambah/Ubah SPPT PBB P2',
           href: null,
         }} />
+      <Tabs.Screen 
+        name="exportData" 
+        options={{ 
+          title: 'Export Data',
+          href: null,
+        }} />
     </Tabs>
   );
 }

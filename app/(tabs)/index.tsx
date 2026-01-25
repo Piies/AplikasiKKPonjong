@@ -61,7 +61,7 @@ export default function Index() {
       <View style={styles.menuGrid}>
         <IconButton label="Database Keluarga" iconName="users" href={"/databaseKK"}/>
         <IconButton label="Tambah Kartu Keluarga Baru" iconName="file-plus" href={"/tambahKK"}/>
-        <IconButton label="Export Data" iconName="share" href={"/pengaturan"}/>
+        <IconButton label="Export Data" iconName="share" href={"/exportData"}/>
         <IconButton label="Backup Data" iconName="database" href={"/pengaturan"}/>
       </View>
       <View style={{alignItems:"center", justifyContent: "center", width:'100%'}}>
