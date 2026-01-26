@@ -122,6 +122,12 @@ export default function TabLayout() {
           title: 'Export Data',
           href: null,
         }} />
+      <Tabs.Screen 
+        name="backupData" 
+        options={{ 
+          title: 'Backup Data',
+          href: null,
+        }} />
     </Tabs>
   );
 }

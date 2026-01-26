@@ -1,17 +1,32 @@
 import { Text, TextInput, View, StyleSheet, Dimensions } from "react-native";
 import { Link } from 'expo-router';
 import { Image, ImageBackground } from 'expo-image';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 import IconButton from "@/components/IconButton";
 import Feather from "@expo/vector-icons/Feather";
+import { useSQLiteContext } from "expo-sqlite";
 
 const gradient_main = require('@/assets/images/gradient-home.png');
 const welcome_decor = require('@/assets/images/welcome-msg-decor.png');
-const placeholderName = 'Ratna'
+const placeholderName = 'Bapak/Ibu'
 
 export default function Index() {
   const [searchQuery, setSearchQuery] = useState('');
+  const db = useSQLiteContext();
+  const [userData, setUserData] = useState<any>(null);
+
+  useEffect(() => {
+    const fetchUserData = async () => {
+      const userData = await db.getFirstAsync<any>(
+        'SELECT * FROM userData WHERE id = 1'
+      );
+      setUserData(userData);
+    };
+    fetchUserData();
+  }, []);
+
+  const now = new Date();
 
   return (
     <View style={styles.container}>
@@ -33,14 +48,14 @@ export default function Index() {
           <Text style={{
             fontWeight: 'bold', 
             fontSize:16,}}>
-            Selamat Pagi, {placeholderName}
+            Selamat {now.getHours() < 12 ? 'Pagi' : now.getHours() < 13 ? 'Siang' : now.getHours() < 18 ? 'Sore' : 'Malam'},{userData && userData.username ? userData.username : placeholderName}
           </Text>
           <Text style={{
             color: '#8F8F8F',
             fontStyle: 'italic',
             fontSize: 12,
           }}>
-            Padukuhan triple ponjong
+            Padukuhan {userData && userData.padukuhan ? userData.padukuhan : ''}
           </Text>
         </View>
         <Image source={welcome_decor} style={{height:50, aspectRatio: 2}}/>
@@ -62,7 +77,7 @@ export default function Index() {
         <IconButton label="Database Keluarga" iconName="users" href={"/databaseKK"}/>
         <IconButton label="Tambah Kartu Keluarga Baru" iconName="file-plus" href={"/tambahKK"}/>
         <IconButton label="Export Data" iconName="share" href={"/exportData"}/>
-        <IconButton label="Backup Data" iconName="database" href={"/pengaturan"}/>
+        <IconButton label="Backup Data" iconName="database" href={"/backupData"}/>
       </View>
       <View style={{alignItems:"center", justifyContent: "center", width:'100%'}}>
         <IconButton label="PBB-P2" iconName="file" href={"/databaseSppt"}/>

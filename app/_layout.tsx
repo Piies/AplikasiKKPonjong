@@ -46,6 +46,14 @@ export default function RootLayout() {
         totalWp varchar(255),
         createdAt datetime,
         updatedAt datetime
+        );
+      CREATE TABLE IF NOT EXISTS userData (
+        id INTEGER PRIMARY KEY,
+        username VARCHAR(255),
+        padukuhan VARCHAR(255),
+        email VARCHAR(255),
+        createdAt datetime,
+        updatedAt datetime
         );`
     );
   };
