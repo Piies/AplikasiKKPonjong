@@ -81,6 +81,13 @@ export default function TambahKK() {
       return;
     }
 
+    // Validate No KK
+    const noKkValue = nomorKK.trim();
+    if (!/^\d+$/.test(noKkValue)) {
+      Alert.alert('Error', 'Nomor KK harus berupa angka saja');
+      return;
+    }
+
     try {
       const now = new Date().toISOString();
       
@@ -169,7 +176,7 @@ export default function TambahKK() {
     <KeyboardAvoidingView 
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 64 : 76}
     >
       <ScrollView 
         style={{width: '90%'}}

@@ -4,6 +4,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { View, StyleSheet, Text, Dimensions, ScrollView, TextInput, Pressable, Alert, KeyboardAvoidingView, Platform } from "react-native";
 import Feather from "@expo/vector-icons/Feather";
 import { useSQLiteContext } from "expo-sqlite";
+import DateTimePicker, { type DateTimePickerEvent } from '@react-native-community/datetimepicker';
 
 export default function TambahAnggota() {
   const db = useSQLiteContext();
@@ -11,6 +12,8 @@ export default function TambahAnggota() {
   const [nama, setNama] = useState('');
   const [tempatLahir, setTempatLahir] = useState('');
   const [tanggalLahir, setTanggalLahir] = useState('');
+  const [tanggalLahirDate, setTanggalLahirDate] = useState<Date | null>(null);
+  const [showTanggalLahirPicker, setShowTanggalLahirPicker] = useState(false);
   const [jenisKelamin, setJenisKelamin] = useState('');
   const [hubungan, setHubungan] = useState('');
   const [agama, setAgama] = useState('');
@@ -34,6 +37,7 @@ export default function TambahAnggota() {
       setNama('');
       setTempatLahir('');
       setTanggalLahir('');
+      setTanggalLahirDate(null);
       setJenisKelamin('');
       setHubungan('');
       setAgama('');
@@ -44,6 +48,23 @@ export default function TambahAnggota() {
       setNamaIbu('');
     }
   }, [isEditMode]);
+
+  const formatDateYYYYMMDD = (date: Date) => {
+    const yyyy = date.getFullYear();
+    const mm = String(date.getMonth() + 1).padStart(2, '0');
+    const dd = String(date.getDate()).padStart(2, '0');
+    return `${yyyy}-${mm}-${dd}`;
+  };
+
+  const parseYYYYMMDD = (value: string): Date | null => {
+    const v = value.trim();
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(v)) return null;
+    const [y, m, d] = v.split('-').map((n) => parseInt(n, 10));
+    const dt = new Date(y, m - 1, d);
+    // Guard against invalid dates like 2026-02-31
+    if (dt.getFullYear() !== y || dt.getMonth() !== m - 1 || dt.getDate() !== d) return null;
+    return dt;
+  };
 
   // Fetch data for editing
   useEffect(() => {
@@ -60,7 +81,9 @@ export default function TambahAnggota() {
           setNik(anggota.nik || '');
           setNama(anggota.nama || '');
           setTempatLahir(anggota.tempatLahir || '');
-          setTanggalLahir(anggota.tanggalLahir || '');
+          const tgl = anggota.tanggalLahir || '';
+          setTanggalLahir(tgl);
+          setTanggalLahirDate(parseYYYYMMDD(tgl));
           setJenisKelamin(anggota.jenisKelamin || '');
           setHubungan(anggota.hubungan || '');
           setAgama(anggota.agama || '');
@@ -124,9 +147,21 @@ export default function TambahAnggota() {
       return;
     }
 
+    // Validate NIK
+    const nikValue = nik.trim();
+    if (!/^\d+$/.test(nikValue)) {
+      Alert.alert('Error', 'NIK harus berupa angka saja');
+      return;
+    }
+    // Optional: enforce standard NIK length (16 digits)
+    if (nikValue.length !== 16) {
+      Alert.alert('Error', 'NIK harus 16 digit');
+      return;
+    }
+
     // Validate jenisKelamin
-    if (jenisKelamin.trim() && !['L', 'P'].includes(jenisKelamin.trim().toUpperCase())) {
-      Alert.alert('Error', 'Jenis Kelamin harus L atau P');
+    if (jenisKelamin.trim() && !['L', 'P', 'LAIN'].includes(jenisKelamin.trim().toUpperCase())) {
+      Alert.alert('Error', 'Jenis Kelamin harus L atau P atau Lain');
       return;
     }
 
@@ -239,7 +274,7 @@ export default function TambahAnggota() {
     <KeyboardAvoidingView 
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 64 : 76}
     >
       <ScrollView 
         style={{width: '90%'}}
@@ -267,13 +302,32 @@ export default function TambahAnggota() {
           onChangeText={setTempatLahir}
           placeholderTextColor="#606C38"
         />
-        <TextInput
-          style={styles.textForm}
-          placeholder="Tanggal Lahir"
-          value={tanggalLahir}
-          onChangeText={setTanggalLahir}
-          placeholderTextColor="#606C38"
-        />
+        <Pressable onPress={() => setShowTanggalLahirPicker(true)}>
+          <TextInput
+            style={styles.textForm}
+            placeholder="Tanggal Lahir"
+            value={tanggalLahir}
+            editable={false}
+            pointerEvents="none"
+            placeholderTextColor="#606C38"
+          />
+        </Pressable>
+        {showTanggalLahirPicker && (
+          <DateTimePicker
+            value={tanggalLahirDate ?? new Date()}
+            mode="date"
+            display='default'
+            onChange={(event: DateTimePickerEvent, selectedDate?: Date) => {
+              // Android: picker closes after selection/cancel
+              setShowTanggalLahirPicker(false);
+
+              if (event.type === 'dismissed') return;
+              if (!selectedDate) return; // cancelled
+              setTanggalLahirDate(selectedDate);
+              setTanggalLahir(formatDateYYYYMMDD(selectedDate));
+            }}
+          />
+        )}
         <TextInput
           style={styles.textForm}
           placeholder="Jenis Kelamin"

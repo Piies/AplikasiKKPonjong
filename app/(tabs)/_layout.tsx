@@ -95,13 +95,13 @@ export default function TabLayout() {
       <Tabs.Screen 
         name="tambahKK" 
         options={{ 
-          title: 'Tambah/Ubah Kartu Keluarga',
+          title: 'Kartu Keluarga',
           href: null,
         }} />
       <Tabs.Screen 
         name="tambahAnggota" 
         options={{ 
-          title: 'Tambah/Ubah Anggota Keluarga',
+          title: 'Anggota Keluarga',
           href: null,
         }} />
       <Tabs.Screen 
@@ -113,7 +113,7 @@ export default function TabLayout() {
       <Tabs.Screen 
         name="tambahSppt" 
         options={{ 
-          title: 'Tambah/Ubah SPPT PBB P2',
+          title: 'SPPT PBB P2',
           href: null,
         }} />
       <Tabs.Screen 

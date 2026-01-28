@@ -73,6 +73,13 @@ export default function TambahSppt() {
       return;
     }
 
+    // Validate NOPD
+    const nopdValue = nopd.trim();
+    if (!/^\d+$/.test(nopdValue)) {
+      Alert.alert('Error', 'NOPD harus berupa angka saja');
+      return;
+    }
+
     try {
       const now = new Date().toISOString();
       
@@ -149,7 +156,7 @@ export default function TambahSppt() {
     <KeyboardAvoidingView 
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 64 : 76}
     >
       <ScrollView 
         style={{width: '90%'}}
