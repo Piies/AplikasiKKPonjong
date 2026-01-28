@@ -3,12 +3,13 @@ import { View, StyleSheet, Text, Dimensions, ScrollView, Pressable, Modal, Alert
 import { useSQLiteContext } from 'expo-sqlite';
 import { Dropdown } from 'react-native-element-dropdown';
 import Feather from '@expo/vector-icons/Feather';
-import { KartuKeluargaWithAnggota } from '@/types/database';
+import { KartuKeluargaWithAnggota, Sppt } from '@/types/database';
 import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 import * as Print from 'expo-print';
 import * as MailComposer from 'expo-mail-composer';
 
+type ExportDataKind = 'kk' | 'sppt';
 type ExportType = 'one' | 'all';
 type ExportDestination = 'local' | 'gmail';
 type ExportFormat = 'excel' | 'pdf';
@@ -18,16 +19,25 @@ interface KKOption {
   value: number;
 }
 
+interface SpptOption {
+  label: string;
+  value: number;
+}
+
 export default function ExportData() {
   const db = useSQLiteContext();
+  const [exportDataKind, setExportDataKind] = useState<ExportDataKind | null>('kk');
   const [exportType, setExportType] = useState<ExportType | null>(null);
   const [selectedKK, setSelectedKK] = useState<number | null>(null);
   const [kkOptions, setKkOptions] = useState<KKOption[]>([]);
+  const [selectedSppt, setSelectedSppt] = useState<number | null>(null);
+  const [spptOptions, setSpptOptions] = useState<SpptOption[]>([]);
   const [showModal, setShowModal] = useState(false);
   const [exportDestination, setExportDestination] = useState<ExportDestination | null>(null);
   const [exportFormat, setExportFormat] = useState<ExportFormat | null>(null);
   const [loading, setLoading] = useState(false);
   const [loadingKK, setLoadingKK] = useState(false);
+  const [loadingSppt, setLoadingSppt] = useState(false);
 
   // Fetch KK list for dropdown
   const fetchKKList = useCallback(async () => {
@@ -51,12 +61,35 @@ export default function ExportData() {
     }
   }, [db]);
 
+  // Fetch SPPT list for dropdown
+  const fetchSpptList = useCallback(async () => {
+    try {
+      setLoadingSppt(true);
+      const spptList = await db.getAllAsync<any>(
+        'SELECT id, nopd, namaWp FROM sppt ORDER BY namaWp ASC'
+      );
+
+      const options: SpptOption[] = spptList.map((s: any) => ({
+        label: `${s.nopd} - ${s.namaWp}`,
+        value: s.id,
+      }));
+
+      setSpptOptions(options);
+    } catch (error) {
+      console.error('Error fetching SPPT list:', error);
+      Alert.alert('Error', 'Gagal memuat daftar SPPT');
+    } finally {
+      setLoadingSppt(false);
+    }
+  }, [db]);
+
   useEffect(() => {
     fetchKKList();
-  }, [fetchKKList]);
+    fetchSpptList();
+  }, [fetchKKList, fetchSpptList]);
 
   // Fetch data based on selection
-  const fetchData = useCallback(async (): Promise<KartuKeluargaWithAnggota[]> => {
+  const fetchDataKK = useCallback(async (): Promise<KartuKeluargaWithAnggota[]> => {
     try {
       let query = 'SELECT * FROM kartuKeluarga';
       const params: any[] = [];
@@ -117,6 +150,38 @@ export default function ExportData() {
     }
   }, [db, exportType, selectedKK]);
 
+  const fetchDataSppt = useCallback(async (): Promise<Sppt[]> => {
+    try {
+      let query = 'SELECT * FROM sppt';
+      const params: any[] = [];
+
+      if (exportType === 'one' && selectedSppt) {
+        query += ' WHERE id = ?';
+        params.push(selectedSppt);
+      }
+
+      query += ' ORDER BY id DESC';
+
+      const spptList = await db.getAllAsync<any>(query, params);
+      const data: Sppt[] = spptList.map((item: any) => ({
+        id: item.id,
+        namaWp: item.namaWp,
+        nopd: item.nopd,
+        alamatWp: item.alamatWp || undefined,
+        rtWp: item.rtWp || undefined,
+        rwWp: item.rwWp || undefined,
+        totalWp: item.totalWp,
+        createdAt: item.createdAt || undefined,
+        updatedAt: item.updatedAt || undefined,
+      }));
+
+      return data;
+    } catch (error) {
+      console.error('Error fetching SPPT data:', error);
+      throw error;
+    }
+  }, [db, exportType, selectedSppt]);
+
   // Generate CSV/Excel content
   const generateCSV = (data: KartuKeluargaWithAnggota[]): string => {
     let csv = 'Nomor KK,Nama Kepala Keluarga,Alamat,RT,RW,Kelurahan,Kecamatan,Kota,Provinsi';
@@ -157,6 +222,25 @@ export default function ExportData() {
       }
     });
     
+    return csv;
+  };
+
+  const generateCSVSppt = (data: Sppt[]): string => {
+    let csv = 'NOPD,Nama WP,Alamat WP,RT WP,RW WP,Total WP,Created At,Updated At\n';
+
+    data.forEach((s) => {
+      csv += [
+        `"${s.nopd || ''}"`,
+        `"${s.namaWp || ''}"`,
+        `"${s.alamatWp || ''}"`,
+        `"${s.rtWp || ''}"`,
+        `"${s.rwWp || ''}"`,
+        `"${s.totalWp || ''}"`,
+        `"${s.createdAt || ''}"`,
+        `"${s.updatedAt || ''}"`,
+      ].join(',') + '\n';
+    });
+
     return csv;
   };
 
@@ -243,6 +327,60 @@ export default function ExportData() {
     return html;
   };
 
+  const generatePDFHTMLSppt = (data: Sppt[]): string => {
+    let html = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="UTF-8">
+        <style>
+          body { font-family: Arial, sans-serif; padding: 20px; }
+          h1 { text-align: center; color: #283618; }
+          table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+          th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+          th { background-color: #BC6C25; color: white; }
+          tr:nth-child(even) { background-color: #f2f2f2; }
+        </style>
+      </head>
+      <body>
+        <h1>Data SPPT</h1>
+        <table>
+          <thead>
+            <tr>
+              <th>NOPD</th>
+              <th>Nama WP</th>
+              <th>Alamat</th>
+              <th>RT</th>
+              <th>RW</th>
+              <th>Total</th>
+            </tr>
+          </thead>
+          <tbody>
+    `;
+
+    data.forEach((s) => {
+      html += `
+        <tr>
+          <td>${s.nopd || ''}</td>
+          <td>${s.namaWp || ''}</td>
+          <td>${s.alamatWp || ''}</td>
+          <td>${s.rtWp || ''}</td>
+          <td>${s.rwWp || ''}</td>
+          <td>${s.totalWp || ''}</td>
+        </tr>
+      `;
+    });
+
+    html += `
+          </tbody>
+        </table>
+      </body>
+      </html>
+    `;
+
+    return html;
+  };
+
   // Handle export
   const handleExport = async () => {
     if (!exportDestination || !exportFormat) {
@@ -250,86 +388,161 @@ export default function ExportData() {
       return;
     }
 
-    if (exportType === 'one' && !selectedKK) {
-      Alert.alert('Error', 'Silakan pilih Kartu Keluarga');
-      return;
+    if (exportType === 'one') {
+      if (exportDataKind === 'kk' && !selectedKK) {
+        Alert.alert('Error', 'Silakan pilih Kartu Keluarga');
+        return;
+      }
+      if (exportDataKind === 'sppt' && !selectedSppt) {
+        Alert.alert('Error', 'Silakan pilih SPPT');
+        return;
+      }
     }
 
     try {
       setLoading(true);
-      const data = await fetchData();
-      
-      if (data.length === 0) {
-        Alert.alert('Info', 'Tidak ada data untuk diekspor');
-        setLoading(false);
-        return;
-      }
-
       const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
-      const fileName = exportType === 'one' 
-        ? `KK_${data[0].nomorKK}_${timestamp}`
-        : `Semua_KK_${timestamp}`;
 
-			if (exportFormat === 'excel') {
-				const csvContent = generateCSV(data);
+      if (exportDataKind === 'kk') {
+        const data = await fetchDataKK();
+        if (data.length === 0) {
+          Alert.alert('Info', 'Tidak ada data untuk diekspor');
+          setLoading(false);
+          return;
+        }
+
+        const fileName = exportType === 'one' 
+          ? `KK_${data[0].nomorKK}_${timestamp}`
+          : `Semua_KK_${timestamp}`;
+
+        if (exportFormat === 'excel') {
+          const csvContent = generateCSV(data);
 				
-				// 1. Create the file instance in the Cache directory
-				// Note: ensure 'FileSystem.Paths.cache' is correct for your specific API version imports
-				const file = new FileSystem.File(FileSystem.Paths.cache, `${fileName}.csv`);
+          // 1. Create the file instance in the Cache directory
+          // Note: ensure 'FileSystem.Paths.cache' is correct for your specific API version imports
+          const file = new FileSystem.File(FileSystem.Paths.cache, `${fileName}.csv`);
 
-				// 2. Create and Write content
-				await file.create(); 
-				await file.write(csvContent);
+          // 2. Create and Write content
+          await file.create(); 
+          await file.write(csvContent);
 
-				// 3. GET THE URI DIRECTLY FROM THE FILE OBJECT
-				// Do not manually type 'file://...' or use documentDirectory here.
-				const fileUri = file.uri; 
+          // 3. GET THE URI DIRECTLY FROM THE FILE OBJECT
+          // Do not manually type 'file://...' or use documentDirectory here.
+          const fileUri = file.uri; 
 
-				if (exportDestination === 'local') {
-					if (await Sharing.isAvailableAsync()) {
-						await Sharing.shareAsync(fileUri, {
-							mimeType: 'text/csv',
-							dialogTitle: 'Ekspor Data KK',
-							UTI: 'public.comma-separated-values-text' 
-						});
-					} else {
-						Alert.alert('Error', 'Fitur sharing tidak tersedia di perangkat ini');
-					}
-				} else if (exportDestination === 'gmail') {
-					const isAvailable = await MailComposer.isAvailableAsync();
-					if (isAvailable) {
-						await MailComposer.composeAsync({
-							subject: `Data Kartu Keluarga - ${fileName}`,
-							body: 'Lampiran data Kartu Keluarga dalam format CSV/Excel',
-							attachments: [fileUri],
-						});
-					} else {
-						Alert.alert('Error', 'Email tidak tersedia di perangkat ini');
-					}
-				}
-			} else if (exportFormat === 'pdf') {
-        const html = generatePDFHTML(data);
-        const { uri } = await Print.printToFileAsync({ html });
-        
-        if (exportDestination === 'local') {
-          if (await Sharing.isAvailableAsync()) {
-            await Sharing.shareAsync(uri, {
-              mimeType: 'application/pdf',
-              dialogTitle: 'Ekspor Data KK',
-            });
-          } else {
-            Alert.alert('Error', 'Fitur sharing tidak tersedia di perangkat ini');
+          if (exportDestination === 'local') {
+            if (await Sharing.isAvailableAsync()) {
+              await Sharing.shareAsync(fileUri, {
+                mimeType: 'text/csv',
+                dialogTitle: 'Ekspor Data KK',
+                UTI: 'public.comma-separated-values-text' 
+              });
+            } else {
+              Alert.alert('Error', 'Fitur sharing tidak tersedia di perangkat ini');
+            }
+          } else if (exportDestination === 'gmail') {
+            const isAvailable = await MailComposer.isAvailableAsync();
+            if (isAvailable) {
+              await MailComposer.composeAsync({
+                subject: `Data Kartu Keluarga - ${fileName}`,
+                body: 'Lampiran data Kartu Keluarga dalam format CSV/Excel',
+                attachments: [fileUri],
+              });
+            } else {
+              Alert.alert('Error', 'Email tidak tersedia di perangkat ini');
+            }
           }
-        } else if (exportDestination === 'gmail') {
-          const isAvailable = await MailComposer.isAvailableAsync();
-          if (isAvailable) {
-            await MailComposer.composeAsync({
-              subject: `Data Kartu Keluarga - ${fileName}`,
-              body: 'Lampiran data Kartu Keluarga dalam format PDF',
-              attachments: [uri],
-            });
-          } else {
-            Alert.alert('Error', 'Email tidak tersedia di perangkat ini');
+        } else if (exportFormat === 'pdf') {
+          const html = generatePDFHTML(data);
+          const { uri } = await Print.printToFileAsync({ html });
+        
+          if (exportDestination === 'local') {
+            if (await Sharing.isAvailableAsync()) {
+              await Sharing.shareAsync(uri, {
+                mimeType: 'application/pdf',
+                dialogTitle: 'Ekspor Data KK',
+              });
+            } else {
+              Alert.alert('Error', 'Fitur sharing tidak tersedia di perangkat ini');
+            }
+          } else if (exportDestination === 'gmail') {
+            const isAvailable = await MailComposer.isAvailableAsync();
+            if (isAvailable) {
+              await MailComposer.composeAsync({
+                subject: `Data Kartu Keluarga - ${fileName}`,
+                body: 'Lampiran data Kartu Keluarga dalam format PDF',
+                attachments: [uri],
+              });
+            } else {
+              Alert.alert('Error', 'Email tidak tersedia di perangkat ini');
+            }
+          }
+        }
+      } else if (exportDataKind === 'sppt') {
+        const data = await fetchDataSppt();
+        if (data.length === 0) {
+          Alert.alert('Info', 'Tidak ada data untuk diekspor');
+          setLoading(false);
+          return;
+        }
+
+        const fileName = exportType === 'one' 
+          ? `SPPT_${data[0].nopd}_${timestamp}`
+          : `Semua_SPPT_${timestamp}`;
+
+        if (exportFormat === 'excel') {
+          const csvContent = generateCSVSppt(data);
+          const file = new FileSystem.File(FileSystem.Paths.cache, `${fileName}.csv`);
+          await file.create();
+          await file.write(csvContent);
+          const fileUri = file.uri;
+
+          if (exportDestination === 'local') {
+            if (await Sharing.isAvailableAsync()) {
+              await Sharing.shareAsync(fileUri, {
+                mimeType: 'text/csv',
+                dialogTitle: 'Ekspor Data SPPT',
+                UTI: 'public.comma-separated-values-text'
+              });
+            } else {
+              Alert.alert('Error', 'Fitur sharing tidak tersedia di perangkat ini');
+            }
+          } else if (exportDestination === 'gmail') {
+            const isAvailable = await MailComposer.isAvailableAsync();
+            if (isAvailable) {
+              await MailComposer.composeAsync({
+                subject: `Data SPPT - ${fileName}`,
+                body: 'Lampiran data SPPT dalam format CSV/Excel',
+                attachments: [fileUri],
+              });
+            } else {
+              Alert.alert('Error', 'Email tidak tersedia di perangkat ini');
+            }
+          }
+        } else if (exportFormat === 'pdf') {
+          const html = generatePDFHTMLSppt(data);
+          const { uri } = await Print.printToFileAsync({ html });
+
+          if (exportDestination === 'local') {
+            if (await Sharing.isAvailableAsync()) {
+              await Sharing.shareAsync(uri, {
+                mimeType: 'application/pdf',
+                dialogTitle: 'Ekspor Data SPPT',
+              });
+            } else {
+              Alert.alert('Error', 'Fitur sharing tidak tersedia di perangkat ini');
+            }
+          } else if (exportDestination === 'gmail') {
+            const isAvailable = await MailComposer.isAvailableAsync();
+            if (isAvailable) {
+              await MailComposer.composeAsync({
+                subject: `Data SPPT - ${fileName}`,
+                body: 'Lampiran data SPPT dalam format PDF',
+                attachments: [uri],
+              });
+            } else {
+              Alert.alert('Error', 'Email tidak tersedia di perangkat ini');
+            }
           }
         }
       }
@@ -345,9 +558,15 @@ export default function ExportData() {
   };
 
   const openModal = () => {
-    if (exportType === 'one' && !selectedKK) {
-      Alert.alert('Error', 'Silakan pilih Kartu Keluarga terlebih dahulu');
-      return;
+    if (exportType === 'one') {
+      if (exportDataKind === 'kk' && !selectedKK) {
+        Alert.alert('Error', 'Silakan pilih Kartu Keluarga terlebih dahulu');
+        return;
+      }
+      if (exportDataKind === 'sppt' && !selectedSppt) {
+        Alert.alert('Error', 'Silakan pilih SPPT terlebih dahulu');
+        return;
+      }
     }
     // Reset selections when opening modal
     setExportDestination(null);
@@ -369,38 +588,101 @@ export default function ExportData() {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        <Text style={styles.title}>Ekspor Data Kartu Keluarga</Text>
-        
-        {/* Export Type Dropdown */}
+        <Text style={styles.title}>Ekspor Data</Text>
+
+        {/* Data Kind */}
         <View style={styles.section}>
-          <Text style={styles.label}>Pilih Tipe Ekspor</Text>
+          <Text style={styles.label}>Pilih Jenis Data</Text>
           <Dropdown
             style={styles.dropdown}
             placeholderStyle={styles.placeholderStyle}
             selectedTextStyle={styles.selectedTextStyle}
             data={[
-              { label: 'Satu Kartu Keluarga', value: 'one' },
-              { label: 'Semua Kartu Keluarga', value: 'all' },
+              { label: 'Kartu Keluarga', value: 'kk' },
+              { label: 'SPPT', value: 'sppt' },
             ]}
             maxHeight={300}
             labelField="label"
             valueField="value"
-            placeholder="Pilih tipe ekspor"
-            value={exportType}
+            placeholder="Pilih jenis data"
+            value={exportDataKind}
             onChange={(item) => {
-              setExportType(item.value);
-              if (item.value === 'all') {
-                setSelectedKK(null);
-              }
+              setExportDataKind(item.value);
+              // reset selection when switching kind
+              setExportType(null);
+              setSelectedKK(null);
+              setSelectedSppt(null);
             }}
             renderLeftIcon={() => (
-              <Feather name="file-text" size={20} color="#283618" style={styles.icon} />
+              <Feather name="layers" size={20} color="#283618" style={styles.icon} />
             )}
           />
         </View>
+        
+        {/* Export Type Dropdown KK */}
+        {exportDataKind === 'kk' && (
+          <View style={styles.section}>
+            <Text style={styles.label}>Pilih Tipe Ekspor</Text>
+            <Dropdown
+              style={styles.dropdown}
+              placeholderStyle={styles.placeholderStyle}
+              selectedTextStyle={styles.selectedTextStyle}
+              data={[
+                { label: 'Satu Kartu Keluarga', value: 'one' },
+                { label: 'Semua Kartu Keluarga', value: 'all' },
+              ]}
+              maxHeight={300}
+              labelField="label"
+              valueField="value"
+              placeholder="Pilih tipe ekspor"
+              value={exportType}
+              onChange={(item) => {
+                setExportType(item.value);
+                if (item.value === 'all') {
+                  setSelectedKK(null);
+                  setSelectedSppt(null);
+                }
+              }}
+              renderLeftIcon={() => (
+                <Feather name="file-text" size={20} color="#283618" style={styles.icon} />
+              )}
+            />
+          </View>
+        )}
+
+        {/* Export Type Dropdown sppt */}
+        {exportDataKind === 'sppt' && (
+          <View style={styles.section}>
+            <Text style={styles.label}>Pilih Tipe Ekspor</Text>
+            <Dropdown
+              style={styles.dropdown}
+              placeholderStyle={styles.placeholderStyle}
+              selectedTextStyle={styles.selectedTextStyle}
+              data={[
+                { label: 'Satu SPPT', value: 'one' },
+                { label: 'Semua SPPT', value: 'all' },
+              ]}
+              maxHeight={300}
+              labelField="label"
+              valueField="value"
+              placeholder="Pilih tipe ekspor"
+              value={exportType}
+              onChange={(item) => {
+                setExportType(item.value);
+                if (item.value === 'all') {
+                  setSelectedKK(null);
+                  setSelectedSppt(null);
+                }
+              }}
+              renderLeftIcon={() => (
+                <Feather name="file-text" size={20} color="#283618" style={styles.icon} />
+              )}
+            />
+          </View>
+        )}
 
         {/* KK Selection Dropdown (only if one KK selected) */}
-        {exportType === 'one' && (
+        {exportDataKind === 'kk' && exportType === 'one' && (
           <View style={styles.section}>
             <Text style={styles.label}>Pilih Kartu Keluarga</Text>
             {loadingKK ? (
@@ -428,8 +710,41 @@ export default function ExportData() {
           </View>
         )}
 
+        {/* SPPT Selection Dropdown (only if one SPPT selected) */}
+        {exportDataKind === 'sppt' && exportType === 'one' && (
+          <View style={styles.section}>
+            <Text style={styles.label}>Pilih SPPT</Text>
+            {loadingSppt ? (
+              <View style={styles.loadingContainer}>
+                <ActivityIndicator size="small" color="#BC6C25" />
+                <Text style={styles.loadingText}>Memuat data...</Text>
+              </View>
+            ) : (
+              <Dropdown
+                style={styles.dropdown}
+                placeholderStyle={styles.placeholderStyle}
+                selectedTextStyle={styles.selectedTextStyle}
+                data={spptOptions}
+                maxHeight={300}
+                labelField="label"
+                valueField="value"
+                placeholder="Pilih SPPT"
+                value={selectedSppt}
+                onChange={(item) => setSelectedSppt(item.value)}
+                renderLeftIcon={() => (
+                  <Feather name="home" size={20} color="#283618" style={styles.icon} />
+                )}
+              />
+            )}
+          </View>
+        )}
+
         {/* Export Button */}
-        {exportType && (exportType === 'all' || selectedKK) && (
+        {exportType && (
+          (exportType === 'all' ||
+            (exportDataKind === 'kk' && !!selectedKK) ||
+            (exportDataKind === 'sppt' && !!selectedSppt))
+        ) && (
           <Pressable style={styles.exportButton} onPress={openModal}>
             <Feather name="download" size={20} color="#FFFCEA" />
             <Text style={styles.exportButtonText}>Ekspor Data</Text>
