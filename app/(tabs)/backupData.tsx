@@ -131,16 +131,6 @@ export default function BackupData() {
       await db.execAsync('BEGIN TRANSACTION;');
 
       try {
-        // Clear existing data from tables being restored (in reverse order to respect foreign keys)
-        // anggotaKeluarga should be deleted before kartuKeluarga due to foreign key relationship
-        const deleteOrder = ['anggotaKeluarga', 'kartuKeluarga', 'sppt', 'userData'];
-        for (const table of deleteOrder) {
-          if (tables.includes(table)) {
-            console.log(`Clearing existing data from table: ${table}`);
-            await db.execAsync(`DELETE FROM ${table};`);
-          }
-        }
-
         // Parse SQL statements more carefully
         // Split by semicolon, but handle multi-line statements
         const lines = sql.split('\n');
@@ -170,21 +160,63 @@ export default function BackupData() {
 
         console.log(`Found ${statements.length} potential SQL statements`);
 
+        // Track ID mappings for foreign key relationships
+        // oldId -> newId for kartuKeluarga
+        const kkIdMap = new Map<number, number>();
+
         let insertedCount = 0;
         let skippedCount = 0;
         let errorCount = 0;
 
+        // First pass: Insert kartuKeluarga records (and other non-dependent tables)
+        // Second pass: Insert anggotaKeluarga with updated foreign keys
+        const firstPassTables = ['kartuKeluarga', 'sppt', 'userData'];
+        const secondPassTables = ['anggotaKeluarga'];
+
+        // Helper function to modify INSERT statement to exclude ID column
+        const removeIdFromInsert = (statement: string, tableName: string): { oldId: number | null, modifiedStatement: string } => {
+          // Parse INSERT INTO table (col1, col2, ...) VALUES (val1, val2, ...)
+          const insertPattern = /^INSERT\s+INTO\s+(\w+)\s*\(([^)]+)\)\s*VALUES\s*\(([^)]+)\)/i;
+          const match = statement.match(insertPattern);
+          
+          if (!match) {
+            return { oldId: null, modifiedStatement: statement };
+          }
+
+          const columns = match[2].split(',').map(c => c.trim());
+          const values = match[3].split(',').map(v => v.trim());
+          
+          // Find the index of 'id' column
+          const idIndex = columns.findIndex(col => col.toLowerCase() === 'id');
+          
+          if (idIndex === -1) {
+            // No ID column, return as is
+            return { oldId: null, modifiedStatement: statement };
+          }
+
+          // Get the old ID value for mapping
+          const oldIdValue = values[idIndex];
+          const oldId = oldIdValue && !oldIdValue.includes("'") ? parseInt(oldIdValue) : null;
+
+          // Remove ID column and value
+          const newColumns = columns.filter((_, i) => i !== idIndex);
+          const newValues = values.filter((_, i) => i !== idIndex);
+
+          // Create new INSERT statement without ID
+          const modifiedStatement = `INSERT INTO ${tableName} (${newColumns.join(', ')}) VALUES (${newValues.join(', ')})`;
+
+          return { oldId, modifiedStatement };
+        };
+
+        // First pass: Process tables that don't depend on others
         for (let i = 0; i < statements.length; i++) {
           const statement = statements[i].trim();
-          
-          // Remove trailing semicolon if present (we'll add it back)
           const cleanStatement = statement.replace(/;$/, '');
           
           if (cleanStatement.length === 0) {
             continue;
           }
 
-          // Only run INSERT statements, and only for the requested tables
           const insertMatch = cleanStatement.match(/^INSERT\s+INTO\s+["`']?(\w+)["`']?/i);
           if (!insertMatch) {
             skippedCount++;
@@ -192,25 +224,100 @@ export default function BackupData() {
           }
           
           const tableName = insertMatch[1];
-          console.log(`Found INSERT statement for table: ${tableName}`);
           
-          if (!tables.includes(tableName)) {
-            console.log(`Skipping table ${tableName} (not in restore list)`);
-            skippedCount++;
+          if (!tables.includes(tableName) || !firstPassTables.includes(tableName)) {
             continue;
           }
 
           try {
-            // Execute the statement with semicolon
-            const sqlToExecute = cleanStatement + ';';
-            console.log(`Executing statement ${i + 1}/${statements.length} for ${tableName}`);
-            await db.execAsync(sqlToExecute);
+            const { oldId, modifiedStatement } = removeIdFromInsert(cleanStatement, tableName);
+            
+            // Execute the modified statement
+            await db.execAsync(modifiedStatement + ';');
+            
+            if (tableName === 'kartuKeluarga' && oldId) {
+              // Get the newly generated ID and map it
+              const result = await db.getFirstAsync<{ id: number }>('SELECT last_insert_rowid() as id');
+              const newId = result?.id || null;
+              if (newId) {
+                kkIdMap.set(oldId, newId);
+                console.log(`Mapped kartuKeluarga ID: ${oldId} -> ${newId}`);
+              }
+            }
+            
             insertedCount++;
           } catch (stmtError: any) {
             errorCount++;
             console.error(`Error executing statement ${i + 1} for table ${tableName}:`, stmtError);
             console.error(`Statement was: ${cleanStatement.substring(0, 200)}...`);
-            // Continue with other statements even if one fails
+          }
+        }
+
+        // Second pass: Process anggotaKeluarga with updated foreign keys
+        for (let i = 0; i < statements.length; i++) {
+          const statement = statements[i].trim();
+          const cleanStatement = statement.replace(/;$/, '');
+          
+          if (cleanStatement.length === 0) {
+            continue;
+          }
+
+          const insertMatch = cleanStatement.match(/^INSERT\s+INTO\s+["`']?(\w+)["`']?/i);
+          if (!insertMatch) {
+            continue;
+          }
+          
+          const tableName = insertMatch[1];
+          
+          if (!tables.includes(tableName) || !secondPassTables.includes(tableName)) {
+            continue;
+          }
+
+          try {
+            if (tableName === 'anggotaKeluarga') {
+              // Parse the INSERT statement
+              const insertPattern = /^INSERT\s+INTO\s+(\w+)\s*\(([^)]+)\)\s*VALUES\s*\(([^)]+)\)/i;
+              const match = cleanStatement.match(insertPattern);
+              
+              if (match) {
+                const columns = match[2].split(',').map(c => c.trim());
+                const values = match[3].split(',').map(v => v.trim());
+                
+                // Find column indices
+                const idKKIndex = columns.findIndex(col => col.toLowerCase() === 'idkk');
+                const idIndex = columns.findIndex(col => col.toLowerCase() === 'id');
+                
+                // Get old idKK value before removing ID
+                let oldIdKK: number | null = null;
+                if (idKKIndex !== -1) {
+                  const oldIdKKValue = values[idKKIndex];
+                  oldIdKK = oldIdKKValue && !oldIdKKValue.includes("'") ? parseInt(oldIdKKValue) : null;
+                }
+                
+                // Remove ID column and value
+                const newColumns = columns.filter((_, i) => i !== idIndex);
+                const newValues = values.filter((_, i) => i !== idIndex);
+                
+                // Update idKK if it exists in the mapping
+                // After removing ID, the idKK index might have shifted
+                if (idKKIndex !== -1 && oldIdKK && kkIdMap.has(oldIdKK)) {
+                  // Calculate new index after removing ID
+                  const newIdKKIndex = idIndex < idKKIndex ? idKKIndex - 1 : idKKIndex;
+                  const newIdKK = kkIdMap.get(oldIdKK)!;
+                  newValues[newIdKKIndex] = newIdKK.toString();
+                  console.log(`Updated idKK: ${oldIdKK} -> ${newIdKK}`);
+                }
+                
+                // Create and execute modified statement
+                const modifiedStatement = `INSERT INTO ${tableName} (${newColumns.join(', ')}) VALUES (${newValues.join(', ')})`;
+                await db.execAsync(modifiedStatement + ';');
+                insertedCount++;
+              }
+            }
+          } catch (stmtError: any) {
+            errorCount++;
+            console.error(`Error executing statement ${i + 1} for table ${tableName}:`, stmtError);
+            console.error(`Statement was: ${cleanStatement.substring(0, 200)}...`);
           }
         }
 
