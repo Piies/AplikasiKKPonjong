@@ -1,5 +1,5 @@
-import { Text, TextInput, View, StyleSheet, Dimensions } from "react-native";
-import { Link } from 'expo-router';
+import { Text, View, StyleSheet, Dimensions, Pressable } from "react-native";
+import { Link, router } from 'expo-router';
 import { Image, ImageBackground } from 'expo-image';
 import { useState, useEffect } from 'react';
 
@@ -12,7 +12,6 @@ const welcome_decor = require('@/assets/images/welcome-msg-decor.png');
 const placeholderName = 'Bapak/Ibu'
 
 export default function Index() {
-  const [searchQuery, setSearchQuery] = useState('');
   const db = useSQLiteContext();
   const [userData, setUserData] = useState<any>(null);
 
@@ -60,19 +59,15 @@ export default function Index() {
         </View>
         <Image source={welcome_decor} style={{height:50, aspectRatio: 2}}/>
       </View>
-      <View style={styles.searchInput}>
-        <TextInput
-          style={{
-            flex: 1,
-            fontSize: 12,
-          }}
-          placeholder="Pencarian (Nomor KK, Nama Kepala Keluarga)"
-          value={searchQuery}
-          onChangeText={setSearchQuery}
-          placeholderTextColor="#9CA3AF"
-        />
+      <Pressable 
+        style={styles.searchInput}
+        onPress={() => router.push('/databaseKK')}
+      >
+        <Text style={styles.searchPlaceholder}>
+          Pencarian (Nomor KK, Nama Kepala Keluarga)
+        </Text>
         <Feather name="search" size={16} color={'#111827'}/>
-      </View>
+      </Pressable>
       <View style={styles.menuGrid}>
         <IconButton label="Database Keluarga" iconName="users" href={"/databaseKK"}/>
         <IconButton label="Tambah Kartu Keluarga Baru" iconName="file-plus" href={"/tambahKK"}/>
@@ -111,10 +106,15 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#D1D5DB',
     backgroundColor: '#F1F1F1',
-    color: '#111827',
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 16,
+    justifyContent: 'space-between',
+  },
+  searchPlaceholder: {
+    flex: 1,
+    fontSize: 12,
+    color: '#9CA3AF',
   },
   menuGrid: {
     width: '80%',

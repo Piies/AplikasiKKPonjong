@@ -22,7 +22,7 @@ export default function CardSppt({sppt, onDeleteSppt, onEditSppt}: Props) {
       >
         <View>
           <Text style={styles.title}>{sppt.namaWp}</Text>
-          <Text style={{fontSize:14, color:'#8F8F8F'}}>NIK: {sppt.nopd}</Text>
+          <Text style={{fontSize:14, color:'#8F8F8F'}}>NOPD: {sppt.nopd}</Text>
         </View>
         <Feather
           name={isOpen ? 'chevron-up' : 'chevron-down'}
