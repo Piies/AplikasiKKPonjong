@@ -3,16 +3,20 @@ import { useState, useEffect, useCallback } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
 
 import Feather from "@expo/vector-icons/Feather";
+import DeleteReasonModal from "@/components/DeleteReasonModal";
 import { Link, router } from "expo-router";
 import { useSQLiteContext } from "expo-sqlite";
 import { Sppt } from "@/types/database";
 import CardSppt from "@/components/CardSppt";
+
+type DeleteTarget = { type: 'sppt'; id: number; noTerkait: string; namaTerkait: string } | null;
 
 export default function DatabaseSppt() {
   const db = useSQLiteContext();
   const [searchQuery, setSearchQuery] = useState('');
   const [data, setData] = useState<Sppt[]>([]);
   const [loading, setLoading] = useState(true);
+  const [deleteTarget, setDeleteTarget] = useState<DeleteTarget>(null);
 
   // Fetch data from database
   const fetchData = useCallback(async () => {
@@ -77,37 +81,43 @@ export default function DatabaseSppt() {
     router.push(`/(tabs)/tambahSppt?editId=${SpptId}`);
   };
 
-  // Handler for delete sppt
-  const handleDeleteSppt = async (SpptId: number) => {
-    Alert.alert(
-      'Hapus SPPT',
-      'Apakah Anda yakin ingin menghapus SPPT ini?',
-      [
-        {
-          text: 'Batal',
-          style: 'cancel',
-        },
-        {
-          text: 'Hapus',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await db.runAsync('DELETE FROM sppt WHERE id = ?', [SpptId]);
-              console.log('SPPT berhasil dihapus');
-              // Refresh data
-              fetchData();
-            } catch (error) {
-              console.error('Error deleting SPPT:', error);
-              Alert.alert('Error', 'Gagal menghapus SPPT. Silakan coba lagi.');
-            }
-          },
-        },
-      ]
-    );
+  // Handler for delete sppt - opens modal for reason
+  const handleDeleteSppt = (sppt: Sppt) => {
+    setDeleteTarget({
+      type: 'sppt',
+      id: sppt.id,
+      noTerkait: sppt.nopd || '',
+      namaTerkait: sppt.namaWp || '',
+    });
+  };
+
+  const handleDeleteConfirm = async (alasan: string) => {
+    if (!deleteTarget) return;
+    try {
+      await db.runAsync(
+        'INSERT INTO logPenghapusan (tipe, idTerkait, noTerkait, namaTerkait, alasan) VALUES (?, ?, ?, ?, ?)',
+        [deleteTarget.type, deleteTarget.id, deleteTarget.noTerkait, deleteTarget.namaTerkait, alasan]
+      );
+      await db.runAsync('DELETE FROM sppt WHERE id = ?', [deleteTarget.id]);
+      console.log('SPPT berhasil dihapus');
+      fetchData();
+    } catch (error) {
+      console.error('Error deleting SPPT:', error);
+      Alert.alert('Error', 'Gagal menghapus SPPT. Silakan coba lagi.');
+    } finally {
+      setDeleteTarget(null);
+    }
   };
 
   return (
     <View style={styles.container}>
+      <DeleteReasonModal
+        visible={!!deleteTarget}
+        title="Hapus SPPT"
+        message="Apakah Anda yakin ingin menghapus SPPT ini? Silakan masukkan alasan penghapusan."
+        onCancel={() => setDeleteTarget(null)}
+        onConfirm={handleDeleteConfirm}
+      />
       <View style={{width: '90%', flexDirection:"row", alignItems:"center", gap:8 }}>
         <View style={styles.searchInput}>
           <TextInput

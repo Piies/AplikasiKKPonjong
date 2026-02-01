@@ -1,5 +1,5 @@
 import { Stack } from 'expo-router';
-import { SQLiteProvider, useSQLiteContext, type SQLiteDatabase } from 'expo-sqlite';
+import { SQLiteProvider, type SQLiteDatabase } from 'expo-sqlite';
 
 export default function RootLayout() {
   const createDbIfNeeded = async (db: SQLiteDatabase) => {
@@ -54,6 +54,15 @@ export default function RootLayout() {
         email VARCHAR(255),
         createdAt datetime,
         updatedAt datetime
+        );
+      CREATE TABLE IF NOT EXISTS logPenghapusan (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        tipe VARCHAR(255),
+        idTerkait INTEGER,
+        noTerkait VARCHAR(255),
+        namaTerkait VARCHAR(255),
+        alasan TEXT,
+        createdAt datetime DEFAULT CURRENT_TIMESTAMP
         );`
     );
   };

@@ -161,7 +161,7 @@ export default function Pengaturan() {
       keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
     >
       <ScrollView 
-        style={{width: '90%'}}
+        style={{width: '90%', gap: 12}}
         contentContainerStyle={{ paddingBottom: 20 }}
         keyboardShouldPersistTaps="handled"
       >
@@ -195,6 +195,14 @@ export default function Pengaturan() {
           </View>
           <Text style={styles.linkButtonText}>{isEditMode ? "Update Pengaturan" : "Simpan Pengaturan"}</Text>
         </Pressable>
+        <Link href="/logPenghapusan" asChild>
+          <Pressable style={styles.linkButton}>
+            <View style={{backgroundColor:'#BC6C25', borderRadius:24, aspectRatio:1, width: 24, height: 24, alignItems: 'center', justifyContent: 'center'}}>
+              <Feather name="file-text" size={14} color="#FFFCEA" />
+            </View>
+            <Text style={styles.linkButtonText}>{"Lihat Log Penghapusan"}</Text>
+          </Pressable>
+        </Link>
         <View style={{
           margin: 'auto',
           gap: 12,
@@ -260,7 +268,8 @@ const styles = StyleSheet.create({
     borderRadius: 32,
     gap: 8,
     width: '90%',
-    marginHorizontal: 'auto'
+    marginHorizontal: 'auto',
+    marginBottom: 12,
   },
   linkButtonText: {
     fontSize: 14,

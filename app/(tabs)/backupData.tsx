@@ -1,9 +1,9 @@
 import Feather from "@expo/vector-icons/Feather";
-import { View, Text, StyleSheet, Dimensions, TouchableOpacity, Alert } from "react-native";
-import { useState, useEffect } from 'react';
-import { useSQLiteContext } from 'expo-sqlite';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
+import { useSQLiteContext } from 'expo-sqlite';
+import { useEffect, useState } from 'react';
+import { Alert, Dimensions, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
 // Format bytes to human readable format
 const formatBytes = (bytes: number | null): string => {
@@ -420,7 +420,7 @@ export default function BackupData() {
             Cadangkan Kartu Keluarga
           </Text>
           <Text style={styles.optionsDesc}>
-            Membuat cadangan data untuk satu Kartu Keluarga tertentu
+            Membuat cadangan data untuk data semua Kartu Keluarga
           </Text>
         </View>
         <Feather
@@ -461,7 +461,7 @@ export default function BackupData() {
             Pulihkan Kartu Keluarga
           </Text>
           <Text style={styles.optionsDesc}>
-            Membuat cadangan seluruh data Kartu Keluarga yang tersimpan di dalam cadangan lokal
+            Memulihkan seluruh data Kartu Keluarga dari cadangan lokal
           </Text>
         </View>
         <Feather
@@ -478,10 +478,10 @@ export default function BackupData() {
 			>
 				<View style={styles.optionsTextBox}>
           <Text style={styles.optionsText}>
-            Pulihkan semua Kartu Keluarga
+            Pulihkan semua data
           </Text>
           <Text style={styles.optionsDesc}>
-            Membuat cadangan seluruh data Kartu Keluarga yang tersimpan di dalam cadangan lokal
+            Memulihkan seluruh data dari cadangan lokal
           </Text>
         </View>
         <Feather

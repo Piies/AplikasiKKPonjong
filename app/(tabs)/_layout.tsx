@@ -128,6 +128,12 @@ export default function TabLayout() {
           title: 'Backup Data',
           href: null,
         }} />
+      <Tabs.Screen 
+        name="logPenghapusan" 
+        options={{ 
+          title: 'Log Penghapusan',
+          href: null,
+        }} />
     </Tabs>
   );
 }

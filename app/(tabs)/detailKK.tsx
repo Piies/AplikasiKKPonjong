@@ -1,11 +1,14 @@
-import { Text, View, StyleSheet, Dimensions, ScrollView, Pressable, ActivityIndicator, Alert } from "react-native";
-import { useState, useEffect, useCallback } from 'react';
-import { router, useLocalSearchParams } from "expo-router";
-import { useFocusEffect } from '@react-navigation/native';
 import CardAnggota from "@/components/CardAnggota";
+import DeleteReasonModal from "@/components/DeleteReasonModal";
+import { AnggotaKeluarga, KartuKeluarga } from "@/types/database";
 import Feather from "@expo/vector-icons/Feather";
+import { useFocusEffect } from '@react-navigation/native';
+import { router, useLocalSearchParams } from "expo-router";
 import { useSQLiteContext } from "expo-sqlite";
-import { KartuKeluarga, AnggotaKeluarga } from "@/types/database";
+import { useCallback, useEffect, useState } from 'react';
+import { ActivityIndicator, Alert, Dimensions, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+
+type DeleteTarget = { type: 'anggota'; id: number; noTerkait: string; namaTerkait: string } | { type: 'kk'; id: number; noTerkait: string; namaTerkait: string } | null;
 
 export default function DetailKK() {
   const db = useSQLiteContext();
@@ -15,6 +18,7 @@ export default function DetailKK() {
   const [kartuKeluarga, setKartuKeluarga] = useState<KartuKeluarga | null>(null);
   const [filteredAnggota, setFilteredAnggota] = useState<AnggotaKeluarga[]>([]);
   const [loading, setLoading] = useState(true);
+  const [deleteTarget, setDeleteTarget] = useState<DeleteTarget>(null);
 
   // Fetch data from database
   const fetchData = useCallback(async () => {
@@ -106,65 +110,45 @@ export default function DetailKK() {
     router.push(`/(tabs)/tambahAnggota?editId=${anggotaId}&id=${kartuKeluargaId}`);
   };
 
-  // Handler for deleting anggota keluarga
-  const handleDeleteAnggota = async (anggotaId: number) => {
-    Alert.alert(
-      'Hapus Anggota Keluarga',
-      'Apakah Anda yakin ingin menghapus anggota keluarga ini?',
-      [
-        {
-          text: 'Batal',
-          style: 'cancel',
-        },
-        {
-          text: 'Hapus',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await db.runAsync('DELETE FROM anggotaKeluarga WHERE id = ?', [anggotaId]);
-              console.log('Anggota Keluarga berhasil dihapus');
-              // Refresh data
-              fetchData();
-            } catch (error) {
-              console.error('Error deleting Anggota Keluarga:', error);
-              Alert.alert('Error', 'Gagal menghapus anggota keluarga. Silakan coba lagi.');
-            }
-          },
-        },
-      ]
-    );
+  // Handler for deleting anggota keluarga - opens modal for reason
+  const handleDeleteAnggota = (anggotaId: number) => {
+    const anggota = filteredAnggota.find((a) => a.id === anggotaId);
+    setDeleteTarget({
+      type: 'anggota',
+      id: anggotaId,
+      noTerkait: anggota?.nik || '',
+      namaTerkait: anggota?.nama || '',
+    });
   };
 
-  // Handler for deleting Kartu Keluarga
-  const handleDeleteKK = async (kartuKeluargaId: number) => {
-    Alert.alert(
-      'Hapus Kartu Keluarga',
-      'Apakah Anda yakin ingin menghapus kartu keluarga ini? Semua anggota keluarga juga akan dihapus.',
-      [
-        {
-          text: 'Batal',
-          style: 'cancel',
-        },
-        {
-          text: 'Hapus',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              // Delete all anggota keluarga first (foreign key constraint)
-              await db.runAsync('DELETE FROM anggotaKeluarga WHERE idKK = ?', [kartuKeluargaId]);
-              // Then delete the kartu keluarga
-              await db.runAsync('DELETE FROM kartuKeluarga WHERE id = ?', [kartuKeluargaId]);
-              console.log('Kartu Keluarga berhasil dihapus');
-              // Navigate back to database list
-              router.back();
-            } catch (error) {
-              console.error('Error deleting Kartu Keluarga:', error);
-              Alert.alert('Error', 'Gagal menghapus kartu keluarga. Silakan coba lagi.');
-            }
-          },
-        },
-      ]
-    );
+  // Handler for deleting Kartu Keluarga - opens modal for reason
+  const handleDeleteKK = (kkId: number) => {
+    setDeleteTarget({ type: 'kk', id: kkId, noTerkait: kartuKeluarga?.nomorKK || '', namaTerkait: kartuKeluarga?.namaKepalaKeluarga || '' });
+  };
+
+  const handleDeleteConfirm = async (alasan: string) => {
+    if (!deleteTarget) return;
+    try {
+      await db.runAsync(
+        'INSERT INTO logPenghapusan (tipe, idTerkait, noTerkait, namaTerkait, alasan) VALUES (?, ?, ?, ?, ?)',
+        [deleteTarget.type, deleteTarget.id, deleteTarget.noTerkait, deleteTarget.namaTerkait, alasan]
+      );
+      if (deleteTarget.type === 'anggota') {
+        await db.runAsync('DELETE FROM anggotaKeluarga WHERE id = ?', [deleteTarget.id]);
+        console.log('Anggota Keluarga berhasil dihapus');
+        fetchData();
+      } else {
+        await db.runAsync('DELETE FROM anggotaKeluarga WHERE idKK = ?', [deleteTarget.id]);
+        await db.runAsync('DELETE FROM kartuKeluarga WHERE id = ?', [deleteTarget.id]);
+        console.log('Kartu Keluarga berhasil dihapus');
+        router.back();
+      }
+    } catch (error) {
+      console.error('Error deleting:', error);
+      Alert.alert('Error', 'Gagal menghapus. Silakan coba lagi.');
+    } finally {
+      setDeleteTarget(null);
+    }
   };
 
   if (loading) {
@@ -188,8 +172,20 @@ export default function DetailKK() {
     );
   }
 
+  const isAnggotaDelete = deleteTarget?.type === 'anggota';
+  const isKKDelete = deleteTarget?.type === 'kk';
+
   return (
     <View style={styles.container}>
+      <DeleteReasonModal
+        visible={!!deleteTarget}
+        title={isAnggotaDelete ? 'Hapus Anggota Keluarga' : 'Hapus Kartu Keluarga'}
+        message={isAnggotaDelete
+          ? 'Apakah Anda yakin ingin menghapus anggota keluarga ini? Silakan masukkan alasan penghapusan.'
+          : 'Apakah Anda yakin ingin menghapus kartu keluarga ini? Semua anggota keluarga juga akan dihapus. Silakan masukkan alasan penghapusan.'}
+        onCancel={() => setDeleteTarget(null)}
+        onConfirm={handleDeleteConfirm}
+      />
       <View style={styles.headerInfo}>
         <Text style={styles.headerTitle}>{kartuKeluarga.namaKepalaKeluarga}</Text>
         <Text style={styles.headerSubtitle}>No. KK: {kartuKeluarga.nomorKK}</Text>

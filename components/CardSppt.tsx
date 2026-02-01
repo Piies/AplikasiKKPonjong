@@ -6,7 +6,7 @@ import { Sppt } from '@/types/database';
 
 type Props = {
   sppt: Sppt;
-  onDeleteSppt?: (SpptId: number) => void;
+  onDeleteSppt?: (sppt: Sppt) => void;
   onEditSppt?: (SpptId: number) => void;
 };
 
@@ -70,7 +70,7 @@ export default function CardSppt({sppt, onDeleteSppt, onEditSppt}: Props) {
           </Pressable>
           <Pressable 
             style={styles.linkButton}
-            onPress={() => onDeleteSppt?.(sppt.id)}
+            onPress={() => onDeleteSppt?.(sppt)}
           >
             <Feather name="trash" size={18} color="#FFFCEA" />
             <Text style={styles.linkButtonText}>{"Hapus SPPT"}</Text>
