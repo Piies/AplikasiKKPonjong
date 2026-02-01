@@ -86,10 +86,12 @@ export default function LogPenghapusan() {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Feather name="file-text" size={24} color="#BC6C25" />
         <Text style={styles.headerTitle}>Log Penghapusan</Text>
         <Text style={styles.headerSubtitle}>
           Riwayat penghapusan Anggota Keluarga, Kartu Keluarga, dan SPPT
+        </Text>
+        <Text style={styles.headerSubtitle}>
+          Untuk penghapusan riwayat penghapusan ini, silakan melakukan backup data dan kemudian install ulang aplikasi ini.
         </Text>
       </View>
       <ScrollView
