@@ -1,6 +1,7 @@
-import { Text, TextInput, View, StyleSheet, Dimensions, ScrollView, Pressable, Alert, KeyboardAvoidingView, Platform } from "react-native";
-import { useState, useCallback, useEffect } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
+import { Link } from 'expo-router';
+import { useCallback, useEffect, useState } from 'react';
+import { Alert, Dimensions, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 
 import Feather from "@expo/vector-icons/Feather";
 import { useSQLiteContext } from "expo-sqlite";
@@ -194,7 +195,38 @@ export default function Pengaturan() {
           </View>
           <Text style={styles.linkButtonText}>{isEditMode ? "Update Pengaturan" : "Simpan Pengaturan"}</Text>
         </Pressable>
+        <View style={{
+          margin: 'auto',
+          gap: 12,
+          padding: 24,
+          alignItems: 'center',
+        }}>
+          <Text style={{fontWeight: 'bold', color: '#0A0A0A', }}>Manual Penggunaan Aplikasi:</Text>
+          <Link href='https://docs.google.com/document/d/1MDFW7uUQlAr-iPG5tqo1EsFZOL_TWN1wQwAi0z2HVrY/edit?usp=sharing' asChild>
+            <Pressable style={{
+              backgroundColor: '#3086F6',
+              padding: 16,
+              borderRadius: 32,
+            }}>
+                <Text style={{fontWeight: 'bold', color: '#FFF'}}>Dokumen Penggunaan</Text>
+            </Pressable>
+          </Link>
+        </View>
       </ScrollView>
+      <Text style={{
+        textAlign: 'center',
+        margin: 'auto',
+        color: '#777',
+        fontWeight: 500,
+        fontSize: 12,
+      }}>
+        {`
+Aplikasi disusun oleh:
+Melvin Cahyadi Tirtayasa
+KKN-PPM UGM di Ponjong Periode 4 2025
+        `}
+      </Text>
+      {/*for some reason the text tab spacing affects the centering???*/}
     </KeyboardAvoidingView>
   );
 }
