@@ -1,7 +1,7 @@
-import { Text, View, StyleSheet, Dimensions, Pressable } from "react-native";
-import { Link, router } from 'expo-router';
 import { Image, ImageBackground } from 'expo-image';
-import { useState, useEffect } from 'react';
+import { router } from 'expo-router';
+import { useEffect, useState } from 'react';
+import { Dimensions, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
 import IconButton from "@/components/IconButton";
 import Feather from "@expo/vector-icons/Feather";
@@ -68,15 +68,17 @@ export default function Index() {
         </Text>
         <Feather name="search" size={16} color={'#111827'}/>
       </Pressable>
-      <View style={styles.menuGrid}>
-        <IconButton label="Database Keluarga" iconName="users" href={"/databaseKK"}/>
-        <IconButton label="Tambah Kartu Keluarga Baru" iconName="file-plus" href={"/tambahKK"}/>
-        <IconButton label="Export Data" iconName="share" href={"/exportData"}/>
-        <IconButton label="Backup Data" iconName="database" href={"/backupData"}/>
-      </View>
-      <View style={{alignItems:"center", justifyContent: "center", width:'100%'}}>
-        <IconButton label="PBB-P2" iconName="file" href={"/databaseSppt"}/>
-      </View>
+      <ScrollView>
+        <View style={styles.menuGrid}>
+          <IconButton label="Database Keluarga" iconName="users" href={"/databaseKK"}/>
+          <IconButton label="Tambah Kartu Keluarga Baru" iconName="file-plus" href={"/tambahKK"}/>
+          <IconButton label="Export Data" iconName="share" href={"/exportData"}/>
+          <IconButton label="Backup Data" iconName="database" href={"/backupData"}/>
+        </View>
+        <View style={{alignItems:"center", justifyContent: "center", width:'100%'}}>
+          <IconButton label="PBB-P2" iconName="file" href={"/databaseSppt"}/>
+        </View>
+      </ScrollView>
     </View>
   );
 }
@@ -117,12 +119,13 @@ const styles = StyleSheet.create({
     color: '#9CA3AF',
   },
   menuGrid: {
-    width: '80%',
+    width: '100%',
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'space-between',
     alignItems: 'center',
     rowGap: 16,
+    paddingHorizontal:'12%',
   },
   text: {
     color: '#0a0a0a',
