@@ -19,6 +19,26 @@ export default function DetailKK() {
   const [filteredAnggota, setFilteredAnggota] = useState<AnggotaKeluarga[]>([]);
   const [loading, setLoading] = useState(true);
   const [deleteTarget, setDeleteTarget] = useState<DeleteTarget>(null);
+  const [jumlahPenduduk, setJumlahPenduduk] = useState(0);
+  const [jumlahPundudukLelaki, setJumlahPundudukLelaki] = useState(0);
+  const [jumlahPundudukPerempuan, setJumlahPundudukPerempuan] = useState(0);
+
+  const fetchStatistik = useCallback(async () => {
+    try {
+      // 1. Use 'AS total' (or any name) so we can access the value easily
+      const resPenduduk = await db.getFirstAsync<{ total: number }>('SELECT COUNT(nik) as total FROM anggotaKeluarga WHERE idKK = ?',[kartuKeluargaId]);
+      const resLaki = await db.getFirstAsync<{ total: number }>('SELECT COUNT(nik) as total FROM anggotaKeluarga WHERE jenisKelamin = "L" AND idKK = ?',[kartuKeluargaId]);
+      const resPerempuan = await db.getFirstAsync<{ total: number }>('SELECT COUNT(nik) as total FROM anggotaKeluarga WHERE jenisKelamin = "P" AND idKK = ?',[kartuKeluargaId]);
+      
+      // 2. Access the '.total' property. Use optional chaining and default to 0.
+      setJumlahPenduduk(resPenduduk?.total ?? 0);
+      setJumlahPundudukLelaki(resLaki?.total ?? 0);
+      setJumlahPundudukPerempuan(resPerempuan?.total ?? 0);
+    } catch (error) {
+      console.error('Error fetching statistik:', error);
+    }
+  }, [db]);
+
 
   // Fetch data from database
   const fetchData = useCallback(async () => {
@@ -93,13 +113,15 @@ export default function DetailKK() {
   // Fetch data on mount and when kartuKeluargaId changes
   useEffect(() => {
     fetchData();
-  }, [fetchData]);
+    fetchStatistik();
+  }, [fetchData, fetchStatistik]);
 
   // Refresh data when screen comes into focus
   useFocusEffect(
     useCallback(() => {
       fetchData();
-    }, [fetchData])
+      fetchStatistik();
+    }, [fetchData, fetchStatistik])
   );
 
   const handleAddAnggota = (kartuKeluargaId: number) => {
@@ -186,6 +208,11 @@ export default function DetailKK() {
         onCancel={() => setDeleteTarget(null)}
         onConfirm={handleDeleteConfirm}
       />
+      <View style={{width: '90%'}}>
+        <Text style={styles.textStatistik}>Jumlah Anggota: {jumlahPenduduk}</Text>
+        <Text style={styles.textStatistik}>Jumlah Laki-laki: {jumlahPundudukLelaki}</Text>
+        <Text style={styles.textStatistik}>Jumlah Perempuan: {jumlahPundudukPerempuan}</Text>
+      </View>
       <View style={styles.headerInfo}>
         <Text style={styles.headerTitle}>{kartuKeluarga.namaKepalaKeluarga}</Text>
         <Text style={styles.headerSubtitle}>No. KK: {kartuKeluarga.nomorKK}</Text>
@@ -255,7 +282,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#FCFCFC',
     alignItems: 'center',
     justifyContent: 'flex-start',
-    gap: 24,
+    gap: 12,
     paddingTop: '10%',
     width: Dimensions.get('window').width,
     height: Dimensions.get('window').height,
@@ -317,5 +344,10 @@ const styles = StyleSheet.create({
   linkButtonText: {
     fontSize: 14,
     color: '#FFFCEA',
+  },textStatistik: {
+    fontSize: 14,
+    color: '#0A0A0A',
+    textAlign: 'left',
+    fontWeight: 'bold',
   },
 });
