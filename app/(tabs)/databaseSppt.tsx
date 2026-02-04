@@ -37,17 +37,22 @@ export default function DatabaseSppt() {
       
       // Fetch all Sppt
       const SpptList = await db.getAllAsync<any>(SpptQuery, searchParams);
-        
+
+      // Helper: SQLite/expo-sqlite can return column names in different casing per platform (e.g. nopd vs NOPD).
+      // Use fallbacks so list display shows NOPD etc. even when result keys differ from schema casing.
+      const col = (row: any, name: string) =>
+        row[name] ?? row[name.toLowerCase()] ?? row[name.toUpperCase()] ?? '';
+
       const formattedData: Sppt[] = SpptList.map((item: any) => ({
         id: item.id,
-        namaWp: item.namaWp,
-        nopd: item.nopd,
-        alamatWp: item.alamatWp || undefined,
-        rtWp: item.rtWp || undefined,
-        rwWp: item.rwWp || undefined, // Assumed mandatory based on interface
-        totalWp: item.totalWp,
-        createdAt: item.createdAt || undefined,
-        updatedAt: item.updatedAt || undefined,
+        namaWp: col(item, 'namaWp'),
+        nopd: col(item, 'nopd'),
+        alamatWp: col(item, 'alamatWp') || undefined,
+        rtWp: col(item, 'rtWp') || undefined,
+        rwWp: col(item, 'rwWp'),
+        totalWp: col(item, 'totalWp'),
+        createdAt: col(item, 'createdAt') || undefined,
+        updatedAt: col(item, 'updatedAt') || undefined,
       }));
       
       setData(formattedData);

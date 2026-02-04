@@ -1,8 +1,7 @@
-import { useState } from 'react';
-import { StyleSheet, View, Text, TouchableOpacity, Pressable } from 'react-native';
-import Feather from '@expo/vector-icons/Feather';
-import { Link, Href } from 'expo-router';
 import { Sppt } from '@/types/database';
+import Feather from '@expo/vector-icons/Feather';
+import { useState } from 'react';
+import { Pressable, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 type Props = {
   sppt: Sppt;
@@ -21,8 +20,8 @@ export default function CardSppt({sppt, onDeleteSppt, onEditSppt}: Props) {
         activeOpacity={0.7}
       >
         <View>
-          <Text style={styles.title}>{sppt.namaWp}</Text>
-          <Text style={{fontSize:14, color:'#8F8F8F'}}>NOPD: {sppt.nopd}</Text>
+          <Text style={styles.title}>{sppt.namaWp ?? '-'}</Text>
+          <Text style={{fontSize:14, color:'#8F8F8F'}}>NOPD: {sppt.nopd ?? '-'}</Text>
         </View>
         <Feather
           name={isOpen ? 'chevron-up' : 'chevron-down'}
@@ -34,6 +33,9 @@ export default function CardSppt({sppt, onDeleteSppt, onEditSppt}: Props) {
       {isOpen && (
         <View style={styles.content}>
           <View>
+            <Text style={styles.contentText}>
+              NOPD: {sppt.nopd ?? '-'}
+            </Text>
             <Text style = {styles.contentSectHead}>
               Nama Wajib Pajak
             </Text>
