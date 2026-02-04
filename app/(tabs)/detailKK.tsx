@@ -5,7 +5,7 @@ import Feather from "@expo/vector-icons/Feather";
 import { useFocusEffect } from '@react-navigation/native';
 import { router, useLocalSearchParams } from "expo-router";
 import { useSQLiteContext } from "expo-sqlite";
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Alert, Dimensions, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
 type DeleteTarget = { type: 'anggota'; id: number; noTerkait: string; namaTerkait: string } | { type: 'kk'; id: number; noTerkait: string; namaTerkait: string } | null;
@@ -22,22 +22,60 @@ export default function DetailKK() {
   const [jumlahPenduduk, setJumlahPenduduk] = useState(0);
   const [jumlahPundudukLelaki, setJumlahPundudukLelaki] = useState(0);
   const [jumlahPundudukPerempuan, setJumlahPundudukPerempuan] = useState(0);
+  const [jumlahPendudukRt, setJumlahPendudukRt] = useState(0);
+  const [jumlahPundudukLelakiRt, setJumlahPundudukLelakiRt] = useState(0);
+  const [jumlahPundudukPerempuanRt, setJumlahPundudukPerempuanRt] = useState(0);
+
+  // Ref to ignore stale statistik when user navigates to another KK before request finishes
+  const kartuKeluargaIdRef = useRef(kartuKeluargaId);
+  kartuKeluargaIdRef.current = kartuKeluargaId;
 
   const fetchStatistik = useCallback(async () => {
+    if (!kartuKeluargaId) return;
+    const requestedId = kartuKeluargaId;
     try {
-      // 1. Use 'AS total' (or any name) so we can access the value easily
-      const resPenduduk = await db.getFirstAsync<{ total: number }>('SELECT COUNT(nik) as total FROM anggotaKeluarga WHERE idKK = ?',[kartuKeluargaId]);
-      const resLaki = await db.getFirstAsync<{ total: number }>('SELECT COUNT(nik) as total FROM anggotaKeluarga WHERE jenisKelamin = "L" AND idKK = ?',[kartuKeluargaId]);
-      const resPerempuan = await db.getFirstAsync<{ total: number }>('SELECT COUNT(nik) as total FROM anggotaKeluarga WHERE jenisKelamin = "P" AND idKK = ?',[kartuKeluargaId]);
-      
-      // 2. Access the '.total' property. Use optional chaining and default to 0.
+      const result = await db.getFirstAsync<{ rukunTetangga: string | number }>(
+        'SELECT rukunTetangga FROM kartuKeluarga WHERE id = ?',
+        [requestedId]
+      );
+
+      const rtValue = result?.rukunTetangga;
+      if (rtValue === undefined) return;
+
+      // Normalize RT to string so "1" never matches "10" (strict text comparison)
+      const rtParam = String(rtValue);
+
+      // Per RT: compare as text so RT "1" and RT "10" are never mixed
+      const resPendudukRT = await db.getFirstAsync<{ total: number }>(
+        'SELECT COUNT(nik) as total FROM anggotaKeluarga WHERE idKK IN (SELECT id FROM kartuKeluarga WHERE CAST(rukunTetangga AS TEXT) = ?)',
+        [rtParam]
+      );
+      const resLakiRT = await db.getFirstAsync<{ total: number }>(
+        'SELECT COUNT(nik) as total FROM anggotaKeluarga WHERE jenisKelamin = "L" AND idKK IN (SELECT id FROM kartuKeluarga WHERE CAST(rukunTetangga AS TEXT) = ?)',
+        [rtParam]
+      );
+      const resPerempuanRT = await db.getFirstAsync<{ total: number }>(
+        'SELECT COUNT(nik) as total FROM anggotaKeluarga WHERE jenisKelamin = "P" AND idKK IN (SELECT id FROM kartuKeluarga WHERE CAST(rukunTetangga AS TEXT) = ?)',
+        [rtParam]
+      );
+      // Per KK
+      const resPenduduk = await db.getFirstAsync<{ total: number }>('SELECT COUNT(nik) as total FROM anggotaKeluarga WHERE idKK = ?', [requestedId]);
+      const resLaki = await db.getFirstAsync<{ total: number }>('SELECT COUNT(nik) as total FROM anggotaKeluarga WHERE jenisKelamin = "L" AND idKK = ?', [requestedId]);
+      const resPerempuan = await db.getFirstAsync<{ total: number }>('SELECT COUNT(nik) as total FROM anggotaKeluarga WHERE jenisKelamin = "P" AND idKK = ?', [requestedId]);
+
+      // Only update state if user is still viewing this KK (avoid stale response overwriting after navigation)
+      if (kartuKeluargaIdRef.current !== requestedId) return;
+
       setJumlahPenduduk(resPenduduk?.total ?? 0);
       setJumlahPundudukLelaki(resLaki?.total ?? 0);
       setJumlahPundudukPerempuan(resPerempuan?.total ?? 0);
+      setJumlahPendudukRt(resPendudukRT?.total ?? 0);
+      setJumlahPundudukLelakiRt(resLakiRT?.total ?? 0);
+      setJumlahPundudukPerempuanRt(resPerempuanRT?.total ?? 0);
     } catch (error) {
       console.error('Error fetching statistik:', error);
     }
-  }, [db]);
+  }, [db, kartuKeluargaId]);
 
 
   // Fetch data from database
@@ -209,6 +247,9 @@ export default function DetailKK() {
         onConfirm={handleDeleteConfirm}
       />
       <View style={{width: '90%'}}>
+        <Text style={styles.textStatistik}>Jumlah Anggota di RT {kartuKeluarga.rt}: {jumlahPendudukRt}</Text>
+        <Text style={styles.textStatistik}>Jumlah Laki-laki di RT {kartuKeluarga.rt}: {jumlahPundudukLelakiRt}</Text>
+        <Text style={styles.textStatistik}>Jumlah Perempuan di RT {kartuKeluarga.rt}: {jumlahPundudukPerempuanRt}</Text>
         <Text style={styles.textStatistik}>Jumlah Anggota: {jumlahPenduduk}</Text>
         <Text style={styles.textStatistik}>Jumlah Laki-laki: {jumlahPundudukLelaki}</Text>
         <Text style={styles.textStatistik}>Jumlah Perempuan: {jumlahPundudukPerempuan}</Text>
